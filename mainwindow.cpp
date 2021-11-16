@@ -1,4 +1,4 @@
-//#include "mainwindow.h"
+﻿//#include "mainwindow.h"
 
 //mainWindow::mainWindow()
 //{
@@ -17,7 +17,6 @@
 #include "mainwindow.h"
 #include "udpacq.hpp"
 
-using namespace DeviceLib;
 
 mainWindow::mainWindow(QWidget *owner) :
    inherited(owner),
@@ -32,9 +31,6 @@ mainWindow::mainWindow(QWidget *owner) :
    ports_->addItem("localhost:9999");
    ports_->addItem("localhost:9998");
 
-
-
-   //testing to see whether the frot end works...
    mlo->addWidget(ports_);
    QHBoxLayout *lo1 = new QHBoxLayout;
    QLabel *l = new QLabel(tr("Command:"), this);
@@ -54,52 +50,50 @@ mainWindow::mainWindow(QWidget *owner) :
    connect(send, SIGNAL(clicked()), this, SLOT(processSend()));
    connect(ex, SIGNAL(clicked()), this, SLOT(accept()));
 
-
-//   qDebug() << ports_->currentData();
 }
-//UdpAcqCmdDialog::~UdpAcqCmdDialog() {}
 mainWindow::~mainWindow() {}
-
-//UdpAcqDevice& udpDevice(int n, QComboBox* ports)
-//{
-//   assert(static_cast<size_t>(n) < sizeof(ports));
-//   if (ports->currentIndex() == 0)
-//   {
-//      QString key = QString("udp") + QString::number(n);
-//      UdpAcqDevice ret = new UdpAcqDevice(key);
-
-//      // update current index
-//      ports.currentIndex() = new UdpAcqDevice(port(key));
-//   }
-//   return ret;
-//}
 
 void mainWindow::processSend()
 {
-   using namespace DeviceLib;
-
-   int n = ports_->currentIndex();
-   if (n == -1) n = 0;
    if (cmd_->text().length() == 0)
       return;
+   if (udpsocket_){
+       delete udpsocket_;
+   }
    try
    {
-      QString key = ports_->currentText();
-      UdpAcqDevice ret = UdpAcqDevice(key);
-      UdpAcqDevice& acq = ret;
-      ResourceLock lk(acq.access());
-      resp_->setText(QString("send: ")+cmd_->text());
-      QByteArray resp = acq.sendCommand(cmd_->text());
-      resp_->setText(QString(resp));
-      qDebug() << resp_->text();
+
+    udpsocket_ = new QUdpSocket(this);
+    // I don't think this line down below is necessary. That's because bind makes the object being binded (the socket) listen for incoming requests on a particular interface/port. That means it'sused for the server side
+    // and since UDP is a send&pray protocol, this doesn't need to be done on the server side & never needs to be done on the client side.
+//    udpsocket_->bind(QHostAddress::LocalHost, 9999);
+
+    QByteArray cmd = cmd_->text().toUtf8();
+    QString key = ports_->currentText();
+    QStringList pip = key.split(":");
+
+
+    // would need to lock here & then unlock once it's done reading.
+    udpsocket_->writeDatagram(cmd, QHostAddress::LocalHost, pip[1].toInt());
+//    udpsocket_->readDatagram()
+
+    connect(udpsocket_, &QUdpSocket::readyRead, this, &mainWindow::receive);
+    // this is an example of qt being really stupid. There's absolutely no way to call this function without making udpsocoket (the parameter) a class member
+    // that's absolutely moronic.
+    // there's no way to feed parameters to a slot... that's what I was talking about
 
    }
    catch (std::exception& ex)
    {
       QMessageBox::warning(this, tr("UDP Command Exception"), tr(ex.what()));
    }
-
 }
-// so now let's try and run the python stuff and figure out exactly how this communication is supposed to work
 
-
+void mainWindow::receive(){
+    while (udpsocket_->hasPendingDatagrams()) {
+        QByteArray datagram;
+        datagram.resize(udpsocket_->pendingDatagramSize());
+        udpsocket_->readDatagram(datagram.data(), datagram.size());
+        resp_->setText(datagram.data());
+    }
+}

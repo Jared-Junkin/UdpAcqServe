@@ -5,7 +5,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QLabel>
-
+#include <QUdpSocket>
 
 //*---------------------------------------------------------------------------
 //
@@ -28,6 +28,8 @@ protected slots:
 
 private:
    QComboBox *ports_;
+   QUdpSocket* udpsocket_;
+   void receive();
    QLineEdit *cmd_;
    QLabel *resp_;
 
