@@ -16,6 +16,7 @@
 
 #include "mainwindow.h"
 #include "udpacq.hpp"
+#include "acqtester.h"
 
 using namespace DeviceLib;
 
@@ -31,6 +32,10 @@ mainWindow::mainWindow(QWidget *owner) :
    ports_ = new QComboBox(this);
    ports_->addItem("localhost:9999");
    ports_->addItem("localhost:9998");
+   ports_->addItem("localhost:9997");
+   ports_->addItem("localhost:9996");
+   ports_->addItem("localhost:9995");
+
 
 
 
@@ -44,15 +49,26 @@ mainWindow::mainWindow(QWidget *owner) :
    mlo->addLayout(lo1);
    resp_ = new QLabel(this);
    mlo->addWidget(resp_);
+
    QHBoxLayout *blo = new QHBoxLayout;
    QPushButton *send = new QPushButton(tr("Send"), this);
-   blo->addWidget(send);
    QPushButton *ex = new QPushButton(tr("Exit"), this);
+   QPushButton *thread = new QPushButton(tr("Thread"), this);
+
+   blo->addWidget(send);
    blo->addWidget(ex);
+   blo->addWidget(thread);
    blo->addStretch();
+
    mlo->addLayout(blo);
+
    connect(send, SIGNAL(clicked()), this, SLOT(processSend()));
    connect(ex, SIGNAL(clicked()), this, SLOT(accept()));
+   connect(thread, SIGNAL(clicked()), this, SLOT(thread()));
+   // finished command connect w/ slot
+   // ip_ or qhostaddress so you don't have QHostAddress::LocalHost anymoer
+   // make udpsocket in the constructor, not when the function is called. That way you don't have to recreate and delete a thousand times.
+   // fix so random numbers aren't fucking shit up
 
 
 //   qDebug() << ports_->currentData();
@@ -60,26 +76,29 @@ mainWindow::mainWindow(QWidget *owner) :
 //UdpAcqCmdDialog::~UdpAcqCmdDialog() {}
 mainWindow::~mainWindow() {}
 
-//UdpAcqDevice& udpDevice(int n, QComboBox* ports)
-//{
-//   assert(static_cast<size_t>(n) < sizeof(ports));
-//   if (ports->currentIndex() == 0)
-//   {
-//      QString key = QString("udp") + QString::number(n);
-//      UdpAcqDevice ret = new UdpAcqDevice(key);
+void mainWindow::thread(){
+    using namespace DeviceLib;
+    if (cmd_->text().length() == 0){
+        return;
+    }
+    try{
+        QString key = ports_->currentText();
+        UdpAcqDevice ret = UdpAcqDevice(key);
+        UdpAcqDevice& acq = ret;
 
-//      // update current index
-//      ports.currentIndex() = new UdpAcqDevice(port(key));
-//   }
-//   return ret;
-//}
+        Acqtester *thread = new Acqtester(acq, 5, cmd_->text());
+        thread->run();
+        resp_->setText(thread->text());
+    }
+    catch (std::exception& ex){
+        QMessageBox::warning(this, tr("UDP Command Exception"), tr(ex.what()));
+    }
+}
 
 void mainWindow::processSend()
 {
    using namespace DeviceLib;
 
-   int n = ports_->currentIndex();
-   if (n == -1) n = 0;
    if (cmd_->text().length() == 0)
       return;
    try
@@ -87,6 +106,7 @@ void mainWindow::processSend()
       QString key = ports_->currentText();
       UdpAcqDevice ret = UdpAcqDevice(key);
       UdpAcqDevice& acq = ret;
+
       ResourceLock lk(acq.access());
       resp_->setText(QString("send: ")+cmd_->text());
       QByteArray resp = acq.sendCommand(cmd_->text());
@@ -100,6 +120,4 @@ void mainWindow::processSend()
    }
 
 }
-// so now let's try and run the python stuff and figure out exactly how this communication is supposed to work
-
 

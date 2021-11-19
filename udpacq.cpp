@@ -10,9 +10,13 @@
 #include <unistd.h>
 #include <QDebug>
 #include <except.hpp>
-#include <unistd.h>
+#include <QHostAddress>
+#include <QThread>
+#include <QUdpSocket>
 //#include "devexcep.hpp"
 #include "udpacq.hpp"
+#include <chrono>
+#include <thread>
 
 namespace DeviceLib
 {
@@ -95,6 +99,9 @@ void UdpAcqDevice::setAddress(QString addr)
 //
 // Closes and frees fd_ and ai_ so caller should check if they want to keep them
 //---------------------------------------------------------------------------
+
+// I can't do this (as far as I know) unless i either 1) modify udpacq.h to all me to return something from this function, or 2) modify udpacq.h to make udpsocket_ a global variable or 3) make a wrapper class that explicitly
+// overrides this function in initsocket!
 void UdpAcqDevice::initSocket()
 {
    if (fd_ != -1)
@@ -156,21 +163,45 @@ ssize_t UdpAcqDevice::recvFrom(void *bfr, size_t sz)
 QByteArray UdpAcqDevice::sendCommand(QByteArray cmd)
 {
    char bfr[1024];
-   ssize_t sz = sendTo(cmd.constData(), cmd.length());
-   if (sz > 0)
-   {
-      sz = recvFrom(bfr, sizeof(bfr));
-      if (sz > 0)
-      {
-         if (sz > 1023) qDebug() << "blew the buffer";
-         bfr[sz] = 0;
-         return QByteArray(bfr);
-      }
-      else
-         throw StdExceptionBase("UdpAcqDevice::sendCommand recv");
+   QUdpSocket * udpsocket_ = new QUdpSocket(this);
+   udpsocket_->bind(QHostAddress::LocalHost, port_);
+
+   udpsocket_->writeDatagram(cmd, QHostAddress::LocalHost, port_);
+
+   // this works fine in qDebug mode but it fails when I run it live and I truly don't fucking understand why
+   const QString &tmp = QString::fromUtf8(ip_);
+   QHostAddress *addr = new QHostAddress(tmp);
+
+   int i = 0;
+   while(!udpsocket_->hasPendingDatagrams() && i<100){
+       QThread::msleep(1);
+       i++;
    }
-   else
-      throw StdExceptionBase("UdpAcqDevice::sendCommand send1");
+
+   int x = 1;
+
+   if(udpsocket_->hasPendingDatagrams()){
+       x = udpsocket_->readDatagram(bfr,sizeof(bfr), addr, &port_);
+  }
+
+  QByteArray ret;
+  char bfr2[x-1];
+//  memcpy(bfr2, bfr, sizeof(bfr2));
+
+  qDebug() << x-1;
+  for(int s = 0; s<x-1; s++){
+      qDebug() << "bfr[s] = " << bfr[s];
+      bfr2[s] = bfr[s];
+  }
+  qDebug() << "where the fuck is this extra shit coming from?";
+
+  ret = QByteArray(bfr2);
+  delete addr;
+  return ret;
+
+//  ret = QByteArray(bfr);
+//  delete addr;
+//  return ret;
 }
 
 #if 0 // old way

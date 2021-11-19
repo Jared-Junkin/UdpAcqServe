@@ -25,6 +25,7 @@ public:
 
 protected slots:
    void processSend();
+   void thread();
 
 private:
    QComboBox *ports_;
