@@ -193,7 +193,7 @@ QByteArray UdpAcqDevice::sendCommand(QByteArray cmd)
       qDebug() << "bfr[s] = " << bfr[s];
       bfr2[s] = bfr[s];
   }
-  qDebug() << "where the fuck is this extra shit coming from?";
+  qDebug() << "where is this extra stuff coming from?";
 
   ret = QByteArray(bfr2);
   delete addr;
