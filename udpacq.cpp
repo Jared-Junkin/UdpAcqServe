@@ -13,6 +13,7 @@
 #include <QHostAddress>
 #include <QThread>
 #include <QUdpSocket>
+#include <QNetworkDatagram>
 //#include "devexcep.hpp"
 #include "udpacq.hpp"
 #include <chrono>
@@ -164,13 +165,15 @@ QByteArray UdpAcqDevice::sendCommand(QByteArray cmd)
 {
    char bfr[1024];
    QUdpSocket * udpsocket_ = new QUdpSocket(this);
-   udpsocket_->bind(QHostAddress::LocalHost, port_);
-
-   udpsocket_->writeDatagram(cmd, QHostAddress::LocalHost, port_);
 
    // this works fine in qDebug mode but it fails when I run it live and I truly don't fucking understand why
    const QString &tmp = QString::fromUtf8(ip_);
-   QHostAddress *addr = new QHostAddress(tmp);
+   QHostAddress addr = QHostAddress(tmp);
+
+   QHostAddress &addrRef = addr;
+   udpsocket_->bind(addrRef, port_);
+   udpsocket_->writeDatagram(cmd, addrRef, port_);
+
 
    int i = 0;
    while(!udpsocket_->hasPendingDatagrams() && i<100){
@@ -178,30 +181,15 @@ QByteArray UdpAcqDevice::sendCommand(QByteArray cmd)
        i++;
    }
 
-   int x = 1;
-
    if(udpsocket_->hasPendingDatagrams()){
-       x = udpsocket_->readDatagram(bfr,sizeof(bfr), addr, &port_);
+       QNetworkDatagram rec = udpsocket_->receiveDatagram();
+//       qDebug() << "received data: "<< rec.data();
+       return rec.data();
   }
 
-  QByteArray ret;
-  char bfr2[x-1];
-//  memcpy(bfr2, bfr, sizeof(bfr2));
-
-  qDebug() << x-1;
-  for(int s = 0; s<x-1; s++){
-      qDebug() << "bfr[s] = " << bfr[s];
-      bfr2[s] = bfr[s];
-  }
-  qDebug() << "where is this extra stuff coming from?";
-
-  ret = QByteArray(bfr2);
-  delete addr;
+  QString err("Error, no data received");
+  QByteArray ret = err.toUtf8();
   return ret;
-
-//  ret = QByteArray(bfr);
-//  delete addr;
-//  return ret;
 }
 
 #if 0 // old way

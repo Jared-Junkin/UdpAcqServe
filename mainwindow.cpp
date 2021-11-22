@@ -1,9 +1,3 @@
-//#include "mainwindow.h"
-
-//mainWindow::mainWindow()
-//{
-
-//}
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -11,9 +5,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QUdpSocket>
-//#include <QPortSelector>
 #include <QMessageBox>
-
 #include "mainwindow.h"
 #include "udpacq.hpp"
 #include "acqtester.h"
@@ -27,17 +19,13 @@ mainWindow::mainWindow(QWidget *owner) :
    resp_(0)
 {
    QVBoxLayout *mlo = new QVBoxLayout(this);
-//   ports_= new DeviceLib::UdpPortSelector(this);
-   // this was originally a custom class that allowed you to select ports. Will have to write my own method to determine which ports are available and add them to this combobox
+
    ports_ = new QComboBox(this);
    ports_->addItem("localhost:9999");
    ports_->addItem("localhost:9998");
    ports_->addItem("localhost:9997");
    ports_->addItem("localhost:9996");
    ports_->addItem("localhost:9995");
-
-
-
 
    //testing to see whether the frot end works...
    mlo->addWidget(ports_);
@@ -65,16 +53,21 @@ mainWindow::mainWindow(QWidget *owner) :
    connect(send, SIGNAL(clicked()), this, SLOT(processSend()));
    connect(ex, SIGNAL(clicked()), this, SLOT(accept()));
    connect(thread, SIGNAL(clicked()), this, SLOT(thread()));
-   // finished command connect w/ slot
-   // ip_ or qhostaddress so you don't have QHostAddress::LocalHost anymoer
-   // make udpsocket in the constructor, not when the function is called. That way you don't have to recreate and delete a thousand times.
-   // fix so random numbers aren't fucking shit up
 
-
-//   qDebug() << ports_->currentData();
 }
 //UdpAcqCmdDialog::~UdpAcqCmdDialog() {}
 mainWindow::~mainWindow() {}
+
+UdpAcqDevice &udpDevice(int n)
+{
+     static UdpAcqDevice * dev[10] = {0};  // singleton pattern
+     if (dev[n] == 0){
+         unsigned int x = 9999 - n;
+         dev[n] = new UdpAcqDevice("127.0.0.1", x);
+     }
+     return *dev[n];
+}
+
 
 void mainWindow::thread(){
     using namespace DeviceLib;
@@ -82,9 +75,8 @@ void mainWindow::thread(){
         return;
     }
     try{
-        QString key = ports_->currentText();
-        UdpAcqDevice ret = UdpAcqDevice(key);
-        UdpAcqDevice& acq = ret;
+
+        UdpAcqDevice &acq = udpDevice(ports_->currentIndex());
 
         Acqtester *thread = new Acqtester(acq, 5, cmd_->text());
         thread->run();
