@@ -1,4 +1,3 @@
-#include "udpacqtest.h"
 #include "udpacq.hpp"
 #include "mainwindow.h"
 

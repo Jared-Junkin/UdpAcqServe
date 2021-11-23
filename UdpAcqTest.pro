@@ -10,20 +10,20 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    acqtester.cpp \
     except.cpp \
     main.cpp \
     mainwindow.cpp \
     reslock.cpp \
-    udpacq.cpp \
-    udpacqtest.cpp
+    udpacq.cpp
 
 HEADERS += \
+    acqtester.h \
     devexcep.hpp \
     except.hpp \
     mainwindow.h \
     reslock.hpp \
-    udpacq.hpp \
-    udpacqtest.h
+    udpacq.hpp
 
 FORMS += \
     udpacqtest.ui

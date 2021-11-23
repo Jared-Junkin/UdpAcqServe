@@ -5,7 +5,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QLabel>
-
+#include "udpacq.hpp"
 
 //*---------------------------------------------------------------------------
 //
@@ -14,6 +14,8 @@
 // Window for sending UDP Acq commands
 //
 //----------------------------------------------------------------------------
+using namespace DeviceLib;
+
 class mainWindow : public QDialog
 {
    Q_OBJECT
@@ -25,12 +27,14 @@ public:
 
 protected slots:
    void processSend();
+   void processThread();
 
 private:
    QComboBox *ports_;
    QLineEdit *cmd_;
    QLabel *resp_;
 
+//   UdpAcqDevice *acq_;
 private:
    mainWindow(const mainWindow& cp);             // not implemented
    mainWindow& operator=(const mainWindow& rhs); // not implemented

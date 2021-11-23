@@ -1,21 +1,14 @@
-//#include "mainwindow.h"
-
-//mainWindow::mainWindow()
-//{
-
-//}
-
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QLabel>
+#include <QThread>
 #include <QPushButton>
 #include <QUdpSocket>
-//#include <QPortSelector>
 #include <QMessageBox>
-
 #include "mainwindow.h"
 #include "udpacq.hpp"
+#include "acqtester.h"
 
 using namespace DeviceLib;
 
@@ -26,15 +19,14 @@ mainWindow::mainWindow(QWidget *owner) :
    resp_(0)
 {
    QVBoxLayout *mlo = new QVBoxLayout(this);
-//   ports_= new DeviceLib::UdpPortSelector(this);
-   // this was originally a custom class that allowed you to select ports. Will have to write my own method to determine which ports are available and add them to this combobox
+
    ports_ = new QComboBox(this);
    ports_->addItem("localhost:9999");
    ports_->addItem("localhost:9998");
+   ports_->addItem("localhost:9997");
+   ports_->addItem("localhost:9996");
+   ports_->addItem("localhost:9995");
 
-
-
-   //testing to see whether the frot end works...
    mlo->addWidget(ports_);
    QHBoxLayout *lo1 = new QHBoxLayout;
    QLabel *l = new QLabel(tr("Command:"), this);
@@ -44,42 +36,68 @@ mainWindow::mainWindow(QWidget *owner) :
    mlo->addLayout(lo1);
    resp_ = new QLabel(this);
    mlo->addWidget(resp_);
+
    QHBoxLayout *blo = new QHBoxLayout;
    QPushButton *send = new QPushButton(tr("Send"), this);
-   blo->addWidget(send);
    QPushButton *ex = new QPushButton(tr("Exit"), this);
+   QPushButton *thread = new QPushButton(tr("Thread"), this);
+
+   blo->addWidget(send);
    blo->addWidget(ex);
+   blo->addWidget(thread);
    blo->addStretch();
+
    mlo->addLayout(blo);
+
    connect(send, SIGNAL(clicked()), this, SLOT(processSend()));
    connect(ex, SIGNAL(clicked()), this, SLOT(accept()));
+   connect(thread, SIGNAL(clicked()), this, SLOT(processThread()));
 
-
-//   qDebug() << ports_->currentData();
 }
-//UdpAcqCmdDialog::~UdpAcqCmdDialog() {}
 mainWindow::~mainWindow() {}
 
-//UdpAcqDevice& udpDevice(int n, QComboBox* ports)
-//{
-//   assert(static_cast<size_t>(n) < sizeof(ports));
-//   if (ports->currentIndex() == 0)
-//   {
-//      QString key = QString("udp") + QString::number(n);
-//      UdpAcqDevice ret = new UdpAcqDevice(key);
+// this function creates a UdpAcqDevicec that can connect to host ("127.0.0.1", x). If one already exists, it acts as a getter and returns the UdpAcqDevice.
+UdpAcqDevice &udpDevice(int n)
+{
+    assert(n<10);
+     static UdpAcqDevice * dev[10] = {0};  // singleton pattern
+     if (dev[n] == 0){
+         unsigned int x = 9999 - n;
+         dev[n] = new UdpAcqDevice("127.0.0.1", x);
+     }
+     return *dev[n];
+}
 
-//      // update current index
-//      ports.currentIndex() = new UdpAcqDevice(port(key));
-//   }
-//   return ret;
-//}
+// this function takes the UdpAcqDevice associated with the host ports_->currentIndex(), and makes an Acqtester class which creates a new thread and then repeatedly calls cmd->text() in it
+// the response is then displayed as resp_
+void mainWindow::processThread(){
+    using namespace DeviceLib;
+    if (cmd_->text().length() == 0){
+        return;
+    }
+    try{
 
+        UdpAcqDevice &acq = udpDevice(ports_->currentIndex());
+        Acqtester *thread = new Acqtester(acq, 5, cmd_->text());
+        thread->start();
+
+        int i = 0;
+        while(thread->text()=="" && i<100){
+            QThread::msleep(1);
+        }
+
+        resp_->setText(thread->text());
+    }
+    catch (std::exception& ex){
+        QMessageBox::warning(this, tr("UDP Command Exception"), tr(ex.what()));
+    }
+}
+
+// this function sends a single command cmd_-> text() to the server and returns the response. It's single threaded and only calls sendCommand once. It also doesn't use the acqTester() class.
 void mainWindow::processSend()
 {
    using namespace DeviceLib;
 
-   int n = ports_->currentIndex();
-   if (n == -1) n = 0;
    if (cmd_->text().length() == 0)
       return;
    try
@@ -87,11 +105,11 @@ void mainWindow::processSend()
       QString key = ports_->currentText();
       UdpAcqDevice ret = UdpAcqDevice(key);
       UdpAcqDevice& acq = ret;
+
       ResourceLock lk(acq.access());
       resp_->setText(QString("send: ")+cmd_->text());
       QByteArray resp = acq.sendCommand(cmd_->text());
       resp_->setText(QString(resp));
-      qDebug() << resp_->text();
 
    }
    catch (std::exception& ex)
@@ -100,6 +118,4 @@ void mainWindow::processSend()
    }
 
 }
-// so now let's try and run the python stuff and figure out exactly how this communication is supposed to work
-
 
