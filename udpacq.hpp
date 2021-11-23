@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
-
+#include <QUdpSocket>
 #include <QObject>
 #include <QString>
 #include <QByteArray>
@@ -57,12 +57,12 @@ public:
    // jared put these in here for determining if it's got the right port
    // I've commented them out in the cpp file bc it's bad security hygiene to write these sort of functions
 
-   PrivateResource& access();
-
    // Command / response
    QByteArray sendCommand(QString cmd);
    QByteArray sendCommand(QByteArray cmd);
    QByteArray sendCommand(const char *cmd);  // C string
+
+   QMutex &access();
 
 
 private:
@@ -76,7 +76,9 @@ private:
    int tmo_; // ms.
    struct addrinfo *ai_;
    int fd_;
-   PrivateResource access_;
+   QUdpSocket * sock;
+   QMutex access_;
+
 
 private:
    UdpAcqDevice& operator=(const UdpAcqDevice &rhs); // not implemented
@@ -92,7 +94,7 @@ inline QString UdpAcqDevice::address() const { return ip_ + ":" + QString::numbe
 inline void UdpAcqDevice::setAddress(QString host, unsigned int port) 
 { ip_ = host.toLatin1(); port_ = port; }
 inline int UdpAcqDevice::send(QByteArray cmd) {  return sendTo(cmd, cmd.length()); }
-inline PrivateResource& UdpAcqDevice::access() { return access_; } 
+inline QMutex& UdpAcqDevice::access() { return access_; }
 inline QByteArray UdpAcqDevice::sendCommand(const char *cmd) {  return sendCommand(QByteArray(cmd)); }
 
 } // namespace

@@ -17,12 +17,12 @@ namespace DeviceLib{
                 cmd_ = command;
     }
 
+    // this function sends cmd_ repeatedly for duration_ seconds. Each time the response is assigned to variable text_.
     void Acqtester::run(){
         std::time_t endTime = time(NULL) + duration_;
-        while(time(NULL) < endTime && text_.length() == 0){
+        while(time(NULL) < endTime){
             try{
-                QMutex mutex;
-                QMutexLocker locker(&mutex);
+                QMutexLocker locker(&myDev.access());
                 QByteArray recv = myDev.sendCommand(cmd_);
                 QString resp = QString(recv);
                 text_ = resp;
@@ -36,11 +36,9 @@ namespace DeviceLib{
         }
     }
 
+    // this function returns text_, because it is a private variable.
     QString Acqtester::text(){
         return text_;
     }
 
 }
-
-
-// just realized I'm going to need to have all of this in mainwindow...

@@ -7,7 +7,7 @@
 
 
 namespace DeviceLib{
-    class Acqtester: QThread{
+    class Acqtester: public QThread{
     Q_OBJECT
     public:
        Acqtester(UdpAcqDevice &dev, int durationSeconds, QString command);

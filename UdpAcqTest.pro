@@ -15,8 +15,7 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     reslock.cpp \
-    udpacq.cpp \
-    udpacqtest.cpp
+    udpacq.cpp
 
 HEADERS += \
     acqtester.h \
@@ -24,8 +23,7 @@ HEADERS += \
     except.hpp \
     mainwindow.h \
     reslock.hpp \
-    udpacq.hpp \
-    udpacqtest.h
+    udpacq.hpp
 
 FORMS += \
     udpacqtest.ui

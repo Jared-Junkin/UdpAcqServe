@@ -1,8 +1,8 @@
-
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QLabel>
+#include <QThread>
 #include <QPushButton>
 #include <QUdpSocket>
 #include <QMessageBox>
@@ -27,7 +27,6 @@ mainWindow::mainWindow(QWidget *owner) :
    ports_->addItem("localhost:9996");
    ports_->addItem("localhost:9995");
 
-   //testing to see whether the frot end works...
    mlo->addWidget(ports_);
    QHBoxLayout *lo1 = new QHBoxLayout;
    QLabel *l = new QLabel(tr("Command:"), this);
@@ -55,9 +54,9 @@ mainWindow::mainWindow(QWidget *owner) :
    connect(thread, SIGNAL(clicked()), this, SLOT(thread()));
 
 }
-//UdpAcqCmdDialog::~UdpAcqCmdDialog() {}
 mainWindow::~mainWindow() {}
 
+// this function creates a UdpAcqDevicec that can connect to host ("127.0.0.1", x). If one already exists, it acts as a getter and returns the UdpAcqDevice.
 UdpAcqDevice &udpDevice(int n)
 {
      static UdpAcqDevice * dev[10] = {0};  // singleton pattern
@@ -68,7 +67,8 @@ UdpAcqDevice &udpDevice(int n)
      return *dev[n];
 }
 
-
+// this function takes the UdpAcqDevice associated with the host ports_->currentIndex(), and makes an Acqtester class which creates a new thread and then repeatedly calls cmd->text() in it
+// the response is then displayed as resp_
 void mainWindow::thread(){
     using namespace DeviceLib;
     if (cmd_->text().length() == 0){
@@ -79,7 +79,13 @@ void mainWindow::thread(){
         UdpAcqDevice &acq = udpDevice(ports_->currentIndex());
 
         Acqtester *thread = new Acqtester(acq, 5, cmd_->text());
-        thread->run();
+        thread->start();
+
+        int i = 0;
+        while(thread->text()=="" && i<100){
+            QThread::msleep(1);
+        }
+
         resp_->setText(thread->text());
     }
     catch (std::exception& ex){
@@ -87,6 +93,7 @@ void mainWindow::thread(){
     }
 }
 
+// this function sends a single command cmd_-> text() to the server and returns the response. It's single threaded and only calls sendCommand once. It also doesn't use the acqTester() class.
 void mainWindow::processSend()
 {
    using namespace DeviceLib;
@@ -103,7 +110,6 @@ void mainWindow::processSend()
       resp_->setText(QString("send: ")+cmd_->text());
       QByteArray resp = acq.sendCommand(cmd_->text());
       resp_->setText(QString(resp));
-      qDebug() << resp_->text();
 
    }
    catch (std::exception& ex)
